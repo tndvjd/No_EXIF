@@ -1,0 +1,39 @@
+# Dependencies and local environments
+node_modules/
+.venv/
+venv/
+env/
+
+# Build and packaged app outputs
+dist/
+build/
+release/
+out/
+
+# Generated app outputs
+output/
+downloads/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local image batches
+260213/
+
+# Caches and test artifacts
+.cache/
+.vite/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+playwright-report/
+test-results/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class

@@ -1,0 +1,31 @@
+{
+  "name": "no-exif-pro",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "No EXIF Pro Layout Studio desktop app",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "build": "vite build",
+    "electron": "electron .",
+    "start": "npm run build && npm run electron",
+    "test:js": "node --test pro-ui/src/*.test.mjs electron/*.test.cjs",
+    "test:py": "node tools/ensure_python_test_deps.cjs && .\\.venv\\Scripts\\python.exe -m unittest discover -s tests -v",
+    "test:e2e": "npm run build && node tools/electron_qa.cjs",
+    "test": "npm run test:js && npm run test:py",
+    "verify": "npm run build && npm run test:js && npm run test:py && npm run test:e2e && npm audit --audit-level=high"
+  },
+  "dependencies": {
+    "konva": "^10.0.12",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-konva": "^18.2.10"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^42.1.0",
+    "playwright": "^1.60.0",
+    "vite": "^6.0.7"
+  }
+}
