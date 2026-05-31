@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Check,
   Download,
@@ -6,11 +6,10 @@ import {
   ImageDown,
   KeyRound,
   Link,
-  RefreshCw,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
 } from 'lucide-react';
+import { gsap } from 'gsap';
 import { formatBytes } from './appUtils.js';
 import { choosePixivDownloadItems, filterPixivItems } from './pixivImportUtils.js';
 
@@ -44,6 +43,41 @@ function PixivThumb({ item, index, onToggle }) {
   );
 }
 
+function AnimatedMetricValue({ value }) {
+  const valueRef = useRef(null);
+  const previousValueRef = useRef(Number(value) || 0);
+
+  useEffect(() => {
+    const nextValue = Number(value) || 0;
+    if (!valueRef.current) return undefined;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      valueRef.current.textContent = String(nextValue);
+      previousValueRef.current = nextValue;
+      return undefined;
+    }
+
+    const counter = { value: previousValueRef.current };
+    const tween = gsap.to(counter, {
+      value: nextValue,
+      duration: 0.36,
+      ease: 'power2.out',
+      onUpdate: () => {
+        if (valueRef.current) valueRef.current.textContent = String(Math.round(counter.value));
+      },
+      onComplete: () => {
+        if (valueRef.current) valueRef.current.textContent = String(nextValue);
+      },
+    });
+    previousValueRef.current = nextValue;
+
+    return () => tween.kill();
+  }, [value]);
+
+  return <strong ref={valueRef}>{value}</strong>;
+}
+
 export function PixivImportMode({
   state,
   busy,
@@ -56,6 +90,7 @@ export function PixivImportMode({
   onMockDownload,
   onAddDownloaded,
 }) {
+  const pixivRef = useRef(null);
   const visibleItems = useMemo(() => filterPixivItems(state.items, state), [state]);
   const downloadItems = useMemo(() => choosePixivDownloadItems(state.items, state), [state]);
   const estimatedBytes = useMemo(
@@ -64,8 +99,37 @@ export function PixivImportMode({
   );
   const hasItems = visibleItems.length > 0;
 
+  useEffect(() => {
+    if (!pixivRef.current || !hasItems) return undefined;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return undefined;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.pixiv-card',
+        { autoAlpha: 0, y: 12, scale: 0.985 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.24,
+          ease: 'power2.out',
+          stagger: 0.035,
+          overwrite: true,
+        },
+      );
+      gsap.fromTo(
+        '.pixiv-queue-bar',
+        { autoAlpha: 0.82, y: 6 },
+        { autoAlpha: 1, y: 0, duration: 0.2, ease: 'power2.out', overwrite: true },
+      );
+    }, pixivRef);
+
+    return () => ctx.revert();
+  }, [hasItems, state.filter, state.query, visibleItems.length]);
+
   return (
-    <section className="pixiv-import-mode">
+    <section className="pixiv-import-mode" ref={pixivRef}>
       <aside className="pixiv-source-panel">
         <div className="pixiv-panel-head">
           <span className="panel-kicker">PIXIV SOURCE</span>
@@ -124,11 +188,6 @@ export function PixivImportMode({
           <Search size={18} />
           작품 목록 불러오기
         </button>
-
-        <div className="pixiv-token-note">
-          <ShieldCheck size={16} />
-          <span>토큰은 계정 열쇠입니다. 코드나 로그에 저장하지 않고, 다운로드 요청에만 사용합니다.</span>
-        </div>
       </aside>
 
       <main className="pixiv-browser-panel">
@@ -242,14 +301,9 @@ export function PixivImportMode({
         </div>
 
         <div className="pixiv-result-metrics">
-          <div><span>새로 저장</span><strong>{state.resultCounts.downloaded}</strong></div>
-          <div><span>이미 있음</span><strong>{state.resultCounts.skipped}</strong></div>
-          <div><span>실패</span><strong>{state.resultCounts.failed}</strong></div>
-        </div>
-
-        <div className="pixiv-import-note">
-          <RefreshCw size={17} />
-          <p>UI 먼저 연결된 상태입니다. 다음 단계에서 실제 Pixiv 브리지를 붙이면 이 버튼들이 다운로드 엔진을 호출합니다.</p>
+          <div><span>새로 저장</span><AnimatedMetricValue value={state.resultCounts.downloaded} /></div>
+          <div><span>이미 있음</span><AnimatedMetricValue value={state.resultCounts.skipped} /></div>
+          <div><span>실패</span><AnimatedMetricValue value={state.resultCounts.failed} /></div>
         </div>
 
         <button className="pixiv-download-cta" type="button" disabled={!downloadItems.length || busy} onClick={onMockDownload}>

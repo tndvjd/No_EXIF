@@ -186,6 +186,62 @@ async function assertStatusbarHasNoMojibake(page, label) {
   assert.deepEqual(result.found, [], `${label} page has mojibake: ${JSON.stringify(result)}`);
 }
 
+async function assertModeRailAlignment(page, label) {
+  const result = await page.evaluate(() => {
+    const activeButton = document.querySelector('.rail-button.is-active');
+    const activeIcon = activeButton?.querySelector('.rail-icon-wrapper');
+    const activeLine = activeButton?.querySelector('.rail-active-line');
+    const floatingPill = document.querySelector('.rail-active-pill');
+    const buttonRect = activeButton?.getBoundingClientRect();
+    const iconRect = activeIcon?.getBoundingClientRect();
+    const lineRect = activeLine?.getBoundingClientRect();
+    if (!buttonRect || !iconRect || !lineRect) {
+      return {
+        ok: false,
+        reason: 'missing active rail geometry',
+        hasFloatingPill: Boolean(floatingPill),
+      };
+    }
+
+    const centerDeltaX = Math.abs((buttonRect.left + buttonRect.width / 2) - (iconRect.left + iconRect.width / 2));
+    const lineInsideButton = lineRect.left >= buttonRect.left - 1 && lineRect.right <= buttonRect.right + 1;
+    return {
+      ok: true,
+      hasFloatingPill: Boolean(floatingPill),
+      buttonWidth: buttonRect.width,
+      buttonHeight: buttonRect.height,
+      iconWidth: iconRect.width,
+      iconHeight: iconRect.height,
+      centerDeltaX,
+      lineInsideButton,
+    };
+  });
+
+  assert.equal(result.ok, true, `${label} mode rail geometry missing: ${JSON.stringify(result)}`);
+  assert.equal(result.hasFloatingPill, false, `${label} mode rail uses a detached active pill: ${JSON.stringify(result)}`);
+  assert.ok(result.centerDeltaX <= 1.5, `${label} mode rail icon is not centered in its button: ${JSON.stringify(result)}`);
+  assert.equal(result.lineInsideButton, true, `${label} mode rail active line escapes the button: ${JSON.stringify(result)}`);
+  assert.ok(result.iconWidth >= 30 && result.iconWidth <= 38, `${label} mode rail icon box width is off: ${JSON.stringify(result)}`);
+  assert.ok(result.buttonWidth >= 64 && result.buttonWidth <= 78, `${label} mode rail button width is off: ${JSON.stringify(result)}`);
+}
+
+async function assertActiveRailMode(page, expectedMode, label) {
+  const activeModes = await page.locator('.rail-button.is-active').evaluateAll(buttons => (
+    buttons.map(button => button.getAttribute('data-mode'))
+  ));
+  assert.deepEqual(activeModes, [expectedMode], `${label} active rail mode mismatch`);
+}
+
+async function assertNoLocalProcessingCopy(page, label) {
+  const text = await page.locator('body').textContent();
+  assert.doesNotMatch(text, /로컬 처리|로컬에서|LOCAL/, `${label} repeats unnecessary local-processing copy`);
+}
+
+async function assertNoLocalCommandCopy(page, label) {
+  const text = await page.locator('.command-palette-panel').textContent();
+  assert.doesNotMatch(text, /로컬 처리|로컬에서|LOCAL|Local image/i, `${label} repeats unnecessary local command copy`);
+}
+
 async function assertNoHorizontalOverflow(page, label) {
   const result = await page.evaluate(() => ({
     innerWidth: window.innerWidth,
@@ -305,6 +361,34 @@ async function assertMinimumWindowLayout(page) {
     path: path.join(OUT_DIR, 'grid-1160x760-minimum.png'),
     fullPage: true,
   });
+}
+
+async function assertCommandPaletteFlow(page) {
+  await page.keyboard.press('Control+K');
+  await page.waitForSelector('.command-palette-panel', { timeout: 10000 });
+  await expectText(page, '.command-palette-panel', /이미지 추가/);
+  await assertNoLocalCommandCopy(page, 'command-palette');
+  assert.equal(await page.locator('.command-row kbd').count(), 0);
+  assert.equal(await page.locator('.command-palette-search input').evaluate(element => document.activeElement === element), true);
+  assert.equal(await page.locator('.command-palette-search input').getAttribute('aria-activedescendant'), 'command-option-add-images');
+  await page.screenshot({ path: path.join(OUT_DIR, '00-command-palette.png'), fullPage: true });
+
+  await page.keyboard.press('ArrowDown');
+  assert.equal(await page.locator('.command-palette-search input').getAttribute('aria-activedescendant'), 'command-option-import-pixiv');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.locator('.command-palette-panel').evaluate(element => element.contains(document.activeElement)), true);
+  await page.locator('.command-palette-search input').focus();
+  await page.locator('.command-palette-search input').fill('metadata');
+  await expectText(page, '.command-palette-panel', /메타데이터|metadata/i);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.command-palette-panel', { state: 'detached', timeout: 10000 });
+
+  await page.locator('.command-hint').click();
+  await page.waitForSelector('.command-palette-panel', { timeout: 10000 });
+  assert.equal(await page.locator('.command-palette-search input').inputValue(), '');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.command-palette-panel', { state: 'detached', timeout: 10000 });
+  assert.equal(await page.locator('.command-hint').evaluate(element => document.activeElement === element), true);
 }
 
 async function waitForFileSystem(assertion, timeoutMs = 10000) {
@@ -488,12 +572,23 @@ async function run() {
     await page.setViewportSize({ width: 1500, height: 940 });
     await assertStatusbarHasNoMojibake(page, 'initial');
     assert.equal(await page.locator('.rail-button').count(), 5);
+    await assertModeRailAlignment(page, 'initial');
+    await assertActiveRailMode(page, 'exif', 'initial');
+    await assertNoLocalProcessingCopy(page, 'initial');
     await expectText(page, '.rail-button[data-mode="prompt-share"]', /프롬프트/);
     await expectText(page, '.rail-button[data-mode="pixiv"]', /Pixiv/);
+    await assertCommandPaletteFlow(page);
     await page.locator('.rail-button[data-mode="pixiv"]').click();
     await page.waitForSelector('.pixiv-import-mode', { timeout: 10000 });
+    await assertModeRailAlignment(page, 'pixiv');
+    await assertActiveRailMode(page, 'pixiv', 'pixiv');
+    await assertNoLocalProcessingCopy(page, 'pixiv');
     await assertStatusbarHasNoMojibake(page, 'pixiv');
     await expectText(page, '.pixiv-import-mode', /Pixiv 소스/);
+    assert.doesNotMatch(
+      await page.locator('.pixiv-import-mode').textContent(),
+      /토큰은 계정 열쇠|다운로드 요청에만 사용|브리지|다운로드 엔진|UI 먼저 연결/,
+    );
     await page.locator('.pixiv-field input[type="password"]').fill('e2e-refresh-token');
     await page.locator('.pixiv-primary').click();
     await page.waitForSelector('.pixiv-card', { timeout: 10000 });
@@ -502,6 +597,7 @@ async function run() {
     await page.locator('.rail-button[data-mode="exif"]').click();
     await page.waitForSelector('.exif-mode', { timeout: 10000 });
     await assertStatusbarHasNoMojibake(page, 'exif');
+    await assertActiveRailMode(page, 'exif', 'exif');
     await page.screenshot({ path: path.join(OUT_DIR, '01-empty-exif.png'), fullPage: true });
 
     await dropPaths(page, [sourceImages[0], sourceImages[1], FIXTURE_DIR.replaceAll('\\', '/'), unsupportedFixture]);

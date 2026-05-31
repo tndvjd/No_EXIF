@@ -62,6 +62,24 @@ test('path guard blocks executable open targets even when inside an allowed dire
   assert.equal(guard.isAllowedToOpen(script), false);
 });
 
+test('e2e shell open path reports success without opening Explorer', () => {
+  const start = mainSource.indexOf("ipcMain.handle('shell:openPath'");
+  const end = mainSource.indexOf("ipcMain.handle('shell:showItemInFolder'");
+  const handlerSource = mainSource.slice(start, end);
+
+  assert.match(handlerSource, /if\s*\(isE2ERun\(\)\)\s*return\s*\{\s*ok:\s*true,\s*e2e:\s*true\s*\}/);
+  assert.ok(handlerSource.indexOf('isE2ERun()') < handlerSource.indexOf('shell.openPath'));
+});
+
+test('e2e shell show item reports success without revealing Explorer', () => {
+  const start = mainSource.indexOf("ipcMain.handle('shell:showItemInFolder'");
+  const end = mainSource.indexOf("ipcMain.handle('metadata:saveJson'");
+  const handlerSource = mainSource.slice(start, end);
+
+  assert.match(handlerSource, /if\s*\(isE2ERun\(\)\)\s*return\s*\{\s*ok:\s*true,\s*e2e:\s*true\s*\}/);
+  assert.ok(handlerSource.indexOf('isE2ERun()') < handlerSource.indexOf('shell.showItemInFolder'));
+});
+
 test('metadata JSON save path must stay json', () => {
   assert.equal(isAllowedJsonPath('C:/Users/cdg/Documents/out.metadata.json'), true);
   assert.equal(isAllowedJsonPath('C:/Users/cdg/Documents/out.txt'), false);

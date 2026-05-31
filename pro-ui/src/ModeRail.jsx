@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Download, Grid2X2, Search, Share2, ShieldCheck } from 'lucide-react';
+import { gsap } from 'gsap';
 
 export const modes = [
   { id: 'exif', label: 'EXIF 제거', shortLabel: 'EXIF 제거', icon: ShieldCheck },
@@ -10,54 +11,59 @@ export const modes = [
 ];
 
 export function ModeRail({ activeMode, onChange }) {
-  const activeIndex = Math.max(0, modes.findIndex(mode => mode.id === activeMode));
+  const railRef = useRef(null);
+
+  useEffect(() => {
+    if (!railRef.current) return undefined;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return undefined;
+
+    const ctx = gsap.context(() => {
+      const activeButton = railRef.current.querySelector('.rail-button.is-active');
+      if (!activeButton) return;
+
+      const icon = activeButton.querySelector('.rail-icon-wrapper');
+      const line = activeButton.querySelector('.rail-active-line');
+      gsap.killTweensOf([activeButton, icon, line]);
+      gsap.fromTo(activeButton, { y: 2 }, { y: 0, duration: 0.18, ease: 'power2.out' });
+      gsap.fromTo(icon, { scale: 0.94 }, { scale: 1, duration: 0.2, ease: 'power2.out' });
+      gsap.fromTo(line, { scaleY: 0.25, transformOrigin: 'center center' }, { scaleY: 1, duration: 0.22, ease: 'power2.out' });
+    }, railRef);
+
+    return () => ctx.revert();
+  }, [activeMode]);
 
   return (
-    <nav className="mode-rail" aria-label="작업 모드">
-      <div className="rail-logo">
-        <ShieldCheck size={24} />
+    <nav className="mode-rail" aria-label="작업 모드" ref={railRef}>
+      <div className="rail-logo" aria-hidden="true">
+        <ShieldCheck size={20} />
       </div>
-      <div className="rail-modes-wrapper" style={{ position: 'relative', width: '100%', padding: '0 4px' }}>
-        <div
-          className="rail-active-pill"
-          style={{
-            position: 'absolute',
-            left: '8px',
-            right: '8px',
-            height: '86px',
-            borderRadius: '8px',
-            background: 'rgba(162, 185, 161, 0.08)',
-            border: '1px solid rgba(162, 185, 161, 0.25)',
-            transform: `translateY(${activeIndex * (86 + 12)}px)`,
-            transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-            pointerEvents: 'none',
-            zIndex: 0,
-          }}
-        >
-          <div className="rail-active-line" />
-        </div>
 
-        <div className="rail-modes" style={{ position: 'relative', zIndex: 1, background: 'transparent' }}>
-          {modes.map(mode => {
-            const Icon = mode.icon;
-            return (
-              <button
-                key={mode.id}
-                data-mode={mode.id}
-                className={`rail-button${activeMode === mode.id ? ' is-active' : ''}`}
-                onClick={() => onChange(mode.id)}
-                title={mode.label}
-              >
-                <div className="rail-icon-wrapper" style={{ display: 'inline-flex' }}>
-                  <Icon size={24} />
-                </div>
-                <span>{mode.shortLabel || mode.label}</span>
-              </button>
-            );
-          })}
-        </div>
+      <div className="rail-modes">
+        {modes.map(mode => {
+          const Icon = mode.icon;
+          const isActive = activeMode === mode.id;
+
+          return (
+            <button
+              key={mode.id}
+              data-mode={mode.id}
+              className={`rail-button${isActive ? ' is-active' : ''}`}
+              onClick={() => onChange(mode.id)}
+              title={mode.label}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <span className="rail-active-line" aria-hidden="true" />
+              <span className="rail-icon-wrapper" aria-hidden="true">
+                <Icon size={20} strokeWidth={2.1} />
+              </span>
+              <span className="rail-button-label">{mode.shortLabel || mode.label}</span>
+            </button>
+          );
+        })}
       </div>
-      <div className="rail-foot">LOCAL</div>
+
+      <div className="rail-foot" aria-hidden="true" />
     </nav>
   );
 }

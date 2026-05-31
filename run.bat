@@ -48,7 +48,7 @@ if not exist ".venv\Scripts\python.exe" (
 ".venv\Scripts\python.exe" -c "import PIL" >nul 2>&1
 if errorlevel 1 (
     echo Installing Python image-processing dependencies...
-    call ".venv\Scripts\python.exe" -m pip install -r requirements-pro.txt
+    call ".venv\Scripts\python.exe" -m pip install -r requirements.txt
     if errorlevel 1 (
         echo Python dependency install failed.
         pause

@@ -410,6 +410,7 @@ app.whenReady().then(() => {
     assertTrustedSender(event);
     if (!targetPath) return { ok: false, error: 'Path is required.' };
     if (!pathGuard.isAllowedToOpen(targetPath)) return { ok: false, error: 'Path is not allowed.' };
+    if (isE2ERun()) return { ok: true, e2e: true };
     const error = await shell.openPath(targetPath);
     return error ? { ok: false, error } : { ok: true };
   });
@@ -419,6 +420,7 @@ app.whenReady().then(() => {
     if (!targetPath) return { ok: false, error: 'Path is required.' };
     if (!pathGuard.isAllowedToOpen(targetPath)) return { ok: false, error: 'Path is not allowed.' };
     if (!fs.existsSync(targetPath)) return { ok: false, error: 'Path does not exist.' };
+    if (isE2ERun()) return { ok: true, e2e: true };
     shell.showItemInFolder(targetPath);
     return { ok: true };
   });

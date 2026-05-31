@@ -65,7 +65,7 @@ function CellNode({
     }
     if (strokeRectRef.current) {
       strokeRectRef.current.to({
-        stroke: selected ? '#f2cd78' : 'rgba(162, 185, 161, 0.8)',
+        stroke: selected ? '#f2cf7a' : 'rgba(228, 184, 94, 0.46)',
         strokeWidth: selected ? 3 : 2,
         duration: 0.2,
       });

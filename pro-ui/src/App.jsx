@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { ShieldCheck, ImagePlus } from 'lucide-react';
+import { ImagePlus } from 'lucide-react';
+import { gsap } from 'gsap';
 import {
   canMerge,
   clearCellImages,
@@ -38,9 +39,11 @@ import { ModeRail, modes } from './ModeRail.jsx';
 import { TopBar } from './TopBar.jsx';
 import { ToastHost } from './ToastHost.jsx';
 import { ConfirmModal } from './ConfirmModal.jsx';
+import { CommandPalette } from './CommandPalette.jsx';
 import { ExifRemoveMode } from './ExifRemoveMode.jsx';
 import { GridStudioMode } from './GridStudioMode.jsx';
 import { MetadataMode } from './MetadataMode.jsx';
+import { buildCommandPaletteModel } from './commandPaletteModel.js';
 import {
   choosePixivDownloadItems,
   countPixivResults,
@@ -67,17 +70,17 @@ const initialSettings = {
 const modeNotices = {
   exif: '체크한 이미지만 EXIF 제거 파일로 저장합니다. 원본은 그대로 유지됩니다.',
   grid: '이미지 순서와 캔버스 편집 내용이 그리드 결과에 반영됩니다.',
-  metadata: 'ComfyUI workflow, prompt, EXIF, PNG 태그를 로컬에서 확인합니다.',
+  metadata: 'ComfyUI workflow, prompt, EXIF, PNG 태그를 확인합니다.',
   'prompt-share': 'ComfyUI 프롬프트를 사진 위에 공유용 카드로 렌더링합니다.',
   pixiv: 'Pixiv에서 필요한 이미지만 골라 내려받고, No EXIF Pro 작업 목록으로 가져옵니다.',
 };
 
 const pixivMockItems = [
-  { illustId: 144721221, title: 'Midnight poolside study', fileName: '001_144721221.jpg', resolution: '1344 x 1728', pageCount: 1, sizeBytes: 2_900_000, selected: true, preview: 'linear-gradient(135deg, #20264b 0%, #7e557e 42%, #e6b5a3 100%)' },
+  { illustId: 144721221, title: 'Midnight poolside study', fileName: '001_144721221.jpg', resolution: '1344 x 1728', pageCount: 1, sizeBytes: 2_900_000, selected: true, preview: 'linear-gradient(135deg, #16191e 0%, #473f31 48%, #e4b85e 100%)' },
   { illustId: 144721908, title: 'Soft window portrait', fileName: '002_144721908.png', resolution: '1344 x 1728', pageCount: 1, sizeBytes: 3_120_000, selected: true, preview: 'linear-gradient(135deg, #5c4f43 0%, #d8c1aa 55%, #f5e8dd 100%)' },
-  { illustId: 144722310, title: 'City light sequence', fileName: '003_144722310_p0.jpg', resolution: '1536 x 2048', pageCount: 4, sizeBytes: 4_480_000, selected: true, preview: 'linear-gradient(135deg, #151c24 0%, #496b82 48%, #f0c16a 100%)' },
+  { illustId: 144722310, title: 'City light sequence', fileName: '003_144722310_p0.jpg', resolution: '1536 x 2048', pageCount: 4, sizeBytes: 4_480_000, selected: true, preview: 'linear-gradient(135deg, #15191e 0%, #323128 48%, #f0c16a 100%)' },
   { illustId: 144722870, title: 'Reference pose sheet', fileName: '004_144722870_p0.png', resolution: '1024 x 1536', pageCount: 2, sizeBytes: 2_420_000, selected: false, preview: 'linear-gradient(135deg, #2d2b29 0%, #74634f 44%, #d5b47f 100%)' },
-  { illustId: 144723120, title: 'Neon alley draft', fileName: '005_144723120.jpg', resolution: '1216 x 1792', pageCount: 1, sizeBytes: 2_760_000, selected: true, preview: 'linear-gradient(135deg, #111827 0%, #6a365a 46%, #49a6a8 100%)' },
+  { illustId: 144723120, title: 'Neon alley draft', fileName: '005_144723120.jpg', resolution: '1216 x 1792', pageCount: 1, sizeBytes: 2_760_000, selected: true, preview: 'linear-gradient(135deg, #111317 0%, #4b3f2f 46%, #d8a84f 100%)' },
   { illustId: 144723881, title: 'Costume detail archive', fileName: '006_144723881.png', resolution: '1408 x 1856', pageCount: 1, sizeBytes: 3_660_000, selected: false, preview: 'linear-gradient(135deg, #27221d 0%, #8c7357 40%, #e7d6bd 100%)' },
 ];
 
@@ -144,8 +147,12 @@ export default function App() {
   const [overwriteMode, setOverwriteMode] = useState('rename');
   const [toast, setToast] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
-  const [notice, setNotice] = useState('이미지를 추가하면 로컬에서만 처리합니다. 원본 파일은 변경하지 않습니다.');
+  const [notice, setNotice] = useState('이미지를 추가하면 원본 파일은 변경하지 않습니다.');
   const [history, setHistory] = useState({ past: [], future: [] });
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const [commandSelectedIndex, setCommandSelectedIndex] = useState(0);
+  const modeStageRef = useRef(null);
 
   const canvasCells = resizePreview?.cells || cells;
   const exifTargetCount = images.filter(image => image.removeExif !== false).length;
@@ -172,6 +179,18 @@ export default function App() {
       .filter(({ card }) => card.present || card.positivePrompt || card.negativePrompt)
   ), [images]);
 
+  const commandModel = useMemo(() => buildCommandPaletteModel({
+    query: commandQuery,
+    context: {
+      activeMode,
+      images,
+      promptCount: promptShareItems.length,
+      pixivCount: pixivState.items.length,
+      busy,
+    },
+  }), [activeMode, busy, commandQuery, images, pixivState.items.length, promptShareItems.length]);
+  const commandActions = commandQuery.trim() ? commandModel.results : commandModel.recommended;
+
   const filteredMetadataImages = useMemo(() => {
     const query = metadataQuery.trim().toLowerCase();
     return images
@@ -197,6 +216,38 @@ export default function App() {
     const selectedVisible = promptShareItems.some(item => item.index === selectedImageIndex);
     if (!selectedVisible) setSelectedImageIndex(promptShareItems[0].index);
   }, [activeMode, promptShareItems, selectedImageIndex]);
+
+  useEffect(() => {
+    function handleCommandShortcut(event) {
+      const isCommandKey = event.ctrlKey || event.metaKey;
+      if (!isCommandKey || event.key.toLowerCase() !== 'k') return;
+      event.preventDefault();
+      setCommandOpen(true);
+    }
+
+    window.addEventListener('keydown', handleCommandShortcut);
+    return () => window.removeEventListener('keydown', handleCommandShortcut);
+  }, []);
+
+  useEffect(() => {
+    setCommandSelectedIndex(0);
+  }, [commandOpen, commandQuery]);
+
+  useEffect(() => {
+    if (!modeStageRef.current) return undefined;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return undefined;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        modeStageRef.current,
+        { autoAlpha: 0.92, y: 7 },
+        { autoAlpha: 1, y: 0, duration: 0.18, ease: 'power2.out', overwrite: true },
+      );
+    }, modeStageRef);
+
+    return () => ctx.revert();
+  }, [activeMode]);
 
   const selectedMetadataImage = activeMode === 'metadata'
     ? filteredMetadataImages.find(item => item.index === selectedImageIndex)?.image || null
@@ -259,6 +310,43 @@ export default function App() {
     setActiveMode(mode);
     setToast(null);
     setNotice(modeNotices[mode] || modeNotices.exif);
+  }
+
+  function closeCommandPalette() {
+    setCommandOpen(false);
+    setCommandQuery('');
+  }
+
+  function runCommandPaletteAction(action) {
+    if (!action || action.disabled) return;
+    setCommandOpen(false);
+    setCommandQuery('');
+
+    if (action.id === 'add-images') {
+      void addImages();
+      return;
+    }
+    if (action.id === 'remove-exif') {
+      changeMode('exif');
+      void exportCleanImages();
+      return;
+    }
+    if (action.id === 'export-grid') {
+      changeMode('grid');
+      void exportGrid();
+      return;
+    }
+    if (action.id === 'inspect-metadata') {
+      changeMode('metadata');
+      return;
+    }
+    if (action.id === 'create-prompt-card') {
+      changeMode('prompt-share');
+      return;
+    }
+    if (action.id === 'import-pixiv') {
+      changeMode('pixiv');
+    }
   }
 
   function undo() {
@@ -863,7 +951,7 @@ export default function App() {
     if (!window.noExif?.listPixivWorks) {
       const items = pixivMockItems.map(item => ({ ...item }));
       setPixivState(current => ({ ...current, items, resultCounts: { downloaded: 0, skipped: 0, failed: 0 }, downloadedPaths: [] }));
-      showToast({ type: 'info', title: 'Pixiv 샘플 목록을 표시했습니다.', detail: '브라우저 미리보기에서는 Electron 브리지를 사용할 수 없습니다.' });
+      showToast({ type: 'info', title: 'Pixiv 샘플 목록을 표시했습니다.', detail: '데스크톱 앱에서 실제 목록 조회를 사용할 수 있습니다.' });
       return;
     }
     setBusy(true);
@@ -1122,13 +1210,15 @@ export default function App() {
           promptCount={promptShareItems.length}
           pixivCount={pixivState.items.length}
           busy={busy}
+          onOpenCommand={() => setCommandOpen(true)}
         />
-        <Suspense fallback={<div className="mode-loading">작업 화면을 불러오는 중입니다.</div>}>
-          {modeBody}
-        </Suspense>
+        <div className="mode-stage" ref={modeStageRef}>
+          <Suspense fallback={<div className="mode-loading">작업 화면을 불러오는 중입니다.</div>}>
+            {modeBody}
+          </Suspense>
+        </div>
         <footer className="statusbar">
-          <div className="privacy-pill"><ShieldCheck size={16} /> 로컬 처리 · 원본 유지</div>
-          <div>{notice}</div>
+          <div className="statusbar-note">{notice}</div>
           <div>{images.length}장 불러옴</div>
         </footer>
       </section>
@@ -1145,6 +1235,16 @@ export default function App() {
           setConfirmDialog(null);
           return action?.();
         }}
+      />
+      <CommandPalette
+        open={commandOpen}
+        query={commandQuery}
+        actions={commandActions}
+        selectedIndex={commandSelectedIndex}
+        onQueryChange={setCommandQuery}
+        onSelectedIndexChange={setCommandSelectedIndex}
+        onRun={runCommandPaletteAction}
+        onClose={closeCommandPalette}
       />
       <div className="drop-overlay">
         <ImagePlus size={34} />

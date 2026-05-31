@@ -32,6 +32,7 @@ pnpm-debug.log*
 coverage/
 playwright-report/
 test-results/
+.superpowers/
 
 # Python bytecode
 __pycache__/

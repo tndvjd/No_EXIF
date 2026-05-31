@@ -1,15 +1,12 @@
-import inspect
 import os
 import tempfile
 import unittest
-from types import SimpleNamespace
 
 from PIL import Image
 
 from src.image_processor import (
     batch_remove_exif,
     create_custom_grid_image,
-    create_grid_image,
     remove_exif,
 )
 
@@ -114,54 +111,6 @@ class ImageProcessorTests(unittest.TestCase):
             self.assertEqual(results, [output_path])
             with Image.open(output_path) as img:
                 self.assertEqual(img.getpixel((0, 0)), (10, 140, 220))
-
-    def test_create_grid_image_round_corners_false_preserves_corner_pixels(self):
-        self.assertIn(
-            "round_corners",
-            inspect.signature(create_grid_image).parameters,
-            "create_grid_image needs a round_corners option for square-corner exports.",
-        )
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            image_path = os.path.join(tmpdir, "red.png")
-            Image.new("RGB", (20, 20), (200, 10, 30)).save(image_path)
-            template = SimpleNamespace(rows=1, cols=1, cells=[(0, 0, 1, 1)])
-
-            grid = create_grid_image(
-                [image_path],
-                template,
-                cell_size=20,
-                gap=0,
-                bg_color=(1, 2, 3),
-                round_corners=False,
-            )
-
-            self.assertEqual(grid.getpixel((0, 0)), (200, 10, 30))
-
-    def test_create_grid_image_reports_failed_cells(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            good_path = os.path.join(tmpdir, "good.png")
-            missing_path = os.path.join(tmpdir, "missing.png")
-            Image.new("RGB", (20, 20), (20, 80, 140)).save(good_path)
-            template = SimpleNamespace(
-                rows=1,
-                cols=2,
-                cells=[(0, 0, 1, 1), (0, 1, 1, 1)],
-            )
-
-            failures = []
-            grid = create_grid_image(
-                [good_path, missing_path],
-                template,
-                cell_size=20,
-                gap=0,
-                round_corners=False,
-                error_callback=lambda path, error: failures.append((path, str(error))),
-            )
-
-            self.assertEqual(grid.size, (40, 20))
-            self.assertEqual(len(failures), 1)
-            self.assertEqual(failures[0][0], missing_path)
 
     def test_create_custom_grid_image_supports_merged_cells(self):
         with tempfile.TemporaryDirectory() as tmpdir:

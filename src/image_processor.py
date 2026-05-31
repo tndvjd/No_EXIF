@@ -1,5 +1,5 @@
 """
-Image processing module for EXIF removal and grid image generation.
+Image processing helpers for the Electron bridge.
 """
 
 import os
@@ -8,224 +8,89 @@ from typing import Callable, List, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageOps
 
-from .grid_templates import GridTemplate
 
-
-# Supported image extensions
-SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.gif'}
+SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".gif"}
 
 
 def is_supported_image(filepath: str) -> bool:
-    """Check if a file is a supported image format."""
+    """Return whether a file extension is supported by the app."""
     ext = os.path.splitext(filepath)[1].lower()
     return ext in SUPPORTED_EXTENSIONS
 
 
 def has_exif(filepath: str) -> bool:
-    """Check if an image file has EXIF data."""
+    """Return whether an image has EXIF metadata."""
     try:
         with Image.open(filepath) as img:
-            exif = img.getexif()
-            return bool(exif)
+            return bool(img.getexif())
     except Exception:
         return False
-
-
-def get_exif_info(filepath: str) -> dict:
-    """Get EXIF info summary for display."""
-    info = {}
-    try:
-        with Image.open(filepath) as img:
-            exif = img.getexif()
-            if exif:
-                # Common EXIF tags
-                tag_names = {
-                    271: "카메라 제조사",
-                    272: "카메라 모델",
-                    274: "방향",
-                    282: "X 해상도",
-                    283: "Y 해상도",
-                    305: "소프트웨어",
-                    306: "날짜/시간",
-                    315: "작가",
-                    316: "호스트 컴퓨터",
-                    33432: "저작권",
-                    33434: "노출 시간",
-                    33437: "F-Stop",
-                    34850: "노출 프로그램",
-                    34855: "ISO",
-                    36867: "촬영 일시",
-                    37377: "셔터 속도",
-                    37378: "조리개",
-                    37380: "노출 보정",
-                    37383: "측광 모드",
-                    37385: "플래시",
-                    37386: "초점 거리",
-                    40961: "색공간",
-                    40962: "이미지 너비",
-                    40963: "이미지 높이",
-                    41986: "노출 모드",
-                    41987: "화이트밸런스",
-                    42036: "렌즈 모델",
-                }
-                for tag_id, value in exif.items():
-                    name = tag_names.get(tag_id, f"Tag {tag_id}")
-                    info[name] = str(value)[:100]  # Truncate long values
-    except Exception:
-        pass
-    return info
 
 
 def remove_exif(filepath: str, output_path: Optional[str] = None) -> str:
     """
     Remove EXIF data from an image file.
-    If output_path is None, overwrites the original file.
-    Returns the output path.
+
+    If output_path is None, the original file is overwritten.
     """
     if output_path is None:
         output_path = filepath
 
     with Image.open(filepath) as img:
-        if _is_unsupported_multiframe(img, filepath):
+        if _is_unsupported_multiframe(img):
             raise ValueError("Multi-frame GIF/TIFF files are not supported.")
 
-        # Apply EXIF orientation while avoiding a high-overhead Python pixel list.
         clean_img = ImageOps.exif_transpose(img)
         clean_img.load()
 
-        # Preserve ICC profile if present
-        icc = img.info.get('icc_profile')
+        icc = img.info.get("icc_profile")
         save_kwargs = {}
         if icc:
-            save_kwargs['icc_profile'] = icc
+            save_kwargs["icc_profile"] = icc
 
         ext = os.path.splitext(output_path)[1].lower()
-        if ext in ('.jpg', '.jpeg'):
-            save_kwargs['quality'] = 95
-            save_kwargs['subsampling'] = 0
-            clean_img.save(output_path, 'JPEG', **save_kwargs)
-        elif ext == '.png':
-            clean_img.save(output_path, 'PNG', **save_kwargs)
-        elif ext == '.webp':
-            save_kwargs['quality'] = 95
-            clean_img.save(output_path, 'WEBP', **save_kwargs)
+        if ext in (".jpg", ".jpeg"):
+            save_kwargs["quality"] = 95
+            save_kwargs["subsampling"] = 0
+            clean_img.save(output_path, "JPEG", **save_kwargs)
+        elif ext == ".png":
+            clean_img.save(output_path, "PNG", **save_kwargs)
+        elif ext == ".webp":
+            save_kwargs["quality"] = 95
+            clean_img.save(output_path, "WEBP", **save_kwargs)
         else:
             clean_img.save(output_path, **save_kwargs)
 
     return output_path
 
 
-def _is_unsupported_multiframe(img: Image.Image, filepath: str) -> bool:
+def _is_unsupported_multiframe(img: Image.Image) -> bool:
     """Return True for multi-frame formats that are not safely processed."""
     try:
-        return getattr(img, 'n_frames', 1) > 1
+        return getattr(img, "n_frames", 1) > 1
     except Exception:
         return False
 
 
 def _fix_orientation(img: Image.Image) -> Image.Image:
-    """Fix image orientation based on EXIF orientation tag."""
+    """Apply EXIF orientation when Pillow can read it."""
     try:
-        img = ImageOps.exif_transpose(img)
+        return ImageOps.exif_transpose(img)
     except Exception:
-        pass
-    return img
+        return img
 
 
 def create_thumbnail(filepath: str, size: Tuple[int, int] = (200, 200)) -> Optional[bytes]:
-    """Create a thumbnail for preview. Returns PNG bytes."""
+    """Create a PNG thumbnail for renderer previews."""
     try:
         with Image.open(filepath) as img:
             img = _fix_orientation(img)
             img.thumbnail(size, Image.LANCZOS)
             buf = BytesIO()
-            img.save(buf, format='PNG')
+            img.save(buf, format="PNG")
             return buf.getvalue()
     except Exception:
         return None
-
-
-def create_grid_image(
-    image_paths: List[str],
-    template: GridTemplate,
-    cell_size: int = 400,
-    gap: int = 4,
-    bg_color: Tuple[int, int, int] = (16, 17, 20),
-    remove_exif_flags: Optional[List[bool]] = None,
-    round_corners: bool = True,
-    error_callback: Optional[Callable[[str, Exception], None]] = None,
-) -> Image.Image:
-    """
-    Create a grid image from a list of image paths using a grid template.
-
-    Args:
-        image_paths: List of image file paths
-        template: Grid template defining the layout
-        cell_size: Size of one grid cell in pixels
-        gap: Gap between cells in pixels
-        bg_color: Background color RGB tuple
-        remove_exif_flags: Per-image EXIF removal flags (not used for grid rendering)
-        round_corners: Whether to round image corners in grid cells
-        error_callback: Optional callback(filepath, error) for cells that cannot be loaded
-
-    Returns:
-        PIL Image of the composed grid
-    """
-    total_width = template.cols * cell_size + (template.cols + 1) * gap
-    total_height = template.rows * cell_size + (template.rows + 1) * gap
-
-    canvas = Image.new('RGB', (total_width, total_height), bg_color)
-
-    for i, cell in enumerate(template.cells):
-        if i >= len(image_paths):
-            break
-
-        row, col, row_span, col_span = cell
-
-        # Calculate cell position and size
-        x = gap + col * (cell_size + gap)
-        y = gap + row * (cell_size + gap)
-        w = col_span * cell_size + (col_span - 1) * gap
-        h = row_span * cell_size + (row_span - 1) * gap
-
-        try:
-            with Image.open(image_paths[i]) as img:
-                img = _fix_orientation(img)
-                img = img.convert('RGB')
-
-                # Crop to fill the cell (center crop)
-                img_ratio = img.width / img.height
-                cell_ratio = w / h
-
-                if img_ratio > cell_ratio:
-                    # Image is wider: crop width
-                    new_h = img.height
-                    new_w = int(new_h * cell_ratio)
-                    left = (img.width - new_w) // 2
-                    img = img.crop((left, 0, left + new_w, new_h))
-                else:
-                    # Image is taller: crop height
-                    new_w = img.width
-                    new_h = int(new_w / cell_ratio)
-                    top = (img.height - new_h) // 2
-                    img = img.crop((0, top, new_w, top + new_h))
-
-                img = img.resize((w, h), Image.LANCZOS)
-
-                # Optional: add rounded corners
-                if round_corners:
-                    img = _add_rounded_corners(img, radius=8, bg_color=bg_color)
-
-                canvas.paste(img, (x, y))
-        except Exception as e:
-            if error_callback:
-                error_callback(image_paths[i], e)
-            # Draw placeholder for failed images
-            draw = ImageDraw.Draw(canvas)
-            draw.rectangle([x, y, x + w, y + h], fill=(40, 40, 60))
-            draw.text((x + w // 2 - 20, y + h // 2), "Error", fill=(200, 200, 200))
-
-    return canvas
 
 
 def create_custom_grid_image(
@@ -242,7 +107,7 @@ def create_custom_grid_image(
     error_callback: Optional[Callable[[str, Exception], None]] = None,
 ) -> Image.Image:
     """
-    Create a custom grid image from cell dictionaries.
+    Create a custom grid image from renderer cell dictionaries.
 
     Cell dictionaries use zero-based grid units:
     {"row": 0, "col": 0, "rowSpan": 2, "colSpan": 1, "imageIndex": 0}
@@ -260,7 +125,7 @@ def create_custom_grid_image(
     if cell_w <= 0 or cell_h <= 0:
         raise ValueError("gap is too large for the requested output size.")
 
-    canvas = Image.new('RGB', (output_width, output_height), bg_color)
+    canvas = Image.new("RGB", (output_width, output_height), bg_color)
 
     for visual_index, cell in enumerate(cells):
         row = int(cell.get("row", 0))
@@ -324,7 +189,7 @@ def _fit_image_to_cell(
     """Open, orient, crop, and resize an image so it fills one grid cell."""
     with Image.open(filepath) as img:
         img = _fix_orientation(img)
-        img = img.convert('RGB')
+        img = img.convert("RGB")
 
         img_ratio = img.width / img.height
         cell_ratio = width / height
@@ -376,22 +241,21 @@ def _add_rounded_corners(
     radius = max(0, min(int(radius), min(img.size) // 2))
     if radius <= 0:
         return img
-    mask = Image.new('L', img.size, 255)
+
+    mask = Image.new("L", img.size, 255)
     draw = ImageDraw.Draw(mask)
 
-    # Draw black corners (will be transparent)
     draw.rectangle([0, 0, radius, radius], fill=0)
     draw.rectangle([img.width - radius, 0, img.width, radius], fill=0)
     draw.rectangle([0, img.height - radius, radius, img.height], fill=0)
     draw.rectangle([img.width - radius, img.height - radius, img.width, img.height], fill=0)
 
-    # Draw white circles at corners
     draw.ellipse([0, 0, radius * 2, radius * 2], fill=255)
     draw.ellipse([img.width - radius * 2, 0, img.width, radius * 2], fill=255)
     draw.ellipse([0, img.height - radius * 2, radius * 2, img.height], fill=255)
     draw.ellipse([img.width - radius * 2, img.height - radius * 2, img.width, img.height], fill=255)
 
-    result = Image.new('RGB', img.size, bg_color)
+    result = Image.new("RGB", img.size, bg_color)
     result.paste(img, mask=mask)
     return result
 
@@ -405,18 +269,9 @@ def batch_remove_exif(
     error_callback=None,
 ) -> List[str]:
     """
-    Batch remove EXIF from multiple files.
+    Batch remove EXIF from selected files.
 
-    Args:
-        filepaths: List of source file paths
-        output_dir: Directory to save processed files
-        flags: Per-file flag indicating whether to remove EXIF
-        conflict_mode: "rename" appends a number, "replace" overwrites the target
-        progress_callback: Optional callback(current, total) for progress updates
-        error_callback: Optional callback(filepath, error) for per-file failures
-
-    Returns:
-        List of output file paths
+    conflict_mode="rename" appends a number, while "replace" overwrites the target.
     """
     os.makedirs(output_dir, exist_ok=True)
     results = []
@@ -427,12 +282,8 @@ def batch_remove_exif(
         if should_remove:
             filename = os.path.basename(fp)
             base, ext = os.path.splitext(filename)
+            output_path = str(os.path.join(output_dir, f"NOEXIF_{base}{ext}"))
 
-            # Add NOEXIF_ prefix
-            output_filename = f"NOEXIF_{base}{ext}"
-            output_path = str(os.path.join(output_dir, output_filename))
-
-            # Handle filename conflicts
             if conflict_mode != "replace":
                 counter = 1
                 while os.path.exists(output_path):
@@ -450,14 +301,3 @@ def batch_remove_exif(
             progress_callback(i + 1, len(filepaths))
 
     return results
-
-
-def collect_images_from_folder(folder_path: str) -> List[str]:
-    """Recursively collect all supported image files from a folder."""
-    images = []
-    for root, dirs, files in os.walk(folder_path):
-        for f in sorted(files):
-            fp = os.path.join(root, f)
-            if is_supported_image(fp):
-                images.append(fp)
-    return images

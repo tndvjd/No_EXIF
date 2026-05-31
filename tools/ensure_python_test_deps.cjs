@@ -22,7 +22,7 @@ if (!fs.existsSync(python)) {
   }
 }
 
-const importCheck = run(python, ['-c', 'import PIL; import PyQt6']);
+const importCheck = run(python, ['-c', 'import PIL; import requests; import pixivpy3'], { stdio: 'ignore' });
 if (importCheck.status === 0) {
   process.exit(0);
 }
