@@ -11,7 +11,7 @@
     "electron": "electron .",
     "start": "npm run build && npm run electron",
     "test:js": "node --test pro-ui/src/*.test.mjs electron/*.test.cjs",
-    "test:py": "node tools/ensure_python_test_deps.cjs && .\\.venv\\Scripts\\python.exe -m unittest discover -s tests -v",
+    "test:py": "node tools/run_python_tests.cjs",
     "test:e2e": "npm run build && node tools/electron_qa.cjs",
     "test": "npm run test:js && npm run test:py",
     "verify": "npm run build && npm run test:js && npm run test:py && npm run test:e2e && npm audit --audit-level=high"

@@ -3,7 +3,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const python = path.join(root, '.venv', 'Scripts', 'python.exe');
+const python = process.platform === 'win32'
+  ? path.join(root, '.venv', 'Scripts', 'python.exe')
+  : path.join(root, '.venv', 'bin', 'python');
+const pythonLauncher = process.platform === 'win32' ? ['py', ['-3']] : ['python3', []];
 const requirements = path.join(root, 'requirements.txt');
 
 function run(command, args, options = {}) {
@@ -16,7 +19,8 @@ function run(command, args, options = {}) {
 }
 
 if (!fs.existsSync(python)) {
-  const create = run('py', ['-3', '-m', 'venv', '.venv']);
+  const [command, prefix] = pythonLauncher;
+  const create = run(command, [...prefix, '-m', 'venv', '.venv']);
   if (create.status !== 0) {
     process.exit(create.status ?? 1);
   }
