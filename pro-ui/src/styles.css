@@ -43,6 +43,9 @@ body {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 42%),
     var(--bg);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -55,7 +58,7 @@ button {
   color: inherit;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
+  text-rendering: optimizeLegibility;
 }
 
 button:not(:disabled) {
@@ -557,7 +560,7 @@ button:disabled {
 
 .small-button {
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   flex: 0 0 auto;
   white-space: nowrap;
 }
@@ -923,7 +926,7 @@ button:disabled {
   background: linear-gradient(180deg, #f1c05f, #d99f3b);
   color: #19150e;
   border-radius: 8px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 16px;
 }
 
@@ -937,7 +940,7 @@ button:disabled {
 
 .exif-review-stage {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 42px 40px 116px 34px;
+  grid-template-rows: minmax(0, 1fr) 42px 40px 128px 34px;
   overflow: hidden;
   padding: 0;
   background:
@@ -988,6 +991,21 @@ button:disabled {
   gap: 7px;
 }
 
+.exif-preview-stepper {
+  min-width: 116px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.exif-preview-stepper span {
+  min-width: 48px;
+  text-align: center;
+  color: #ded8ca;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .exif-viewer-toolbar button {
   min-width: 34px;
   min-height: 28px;
@@ -1003,20 +1021,108 @@ button:disabled {
   border: 0;
 }
 
+.filmstrip-shell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
 .exif-filmstrip.list-scroll {
-  height: auto;
+  height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 198, 92, 0.6) rgba(255, 255, 255, 0.08);
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 146px;
   gap: 8px;
-  padding: 10px 22px;
+  padding: 10px 66px 22px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: rgba(8, 10, 10, 0.58);
+  cursor: grab;
+  touch-action: pan-x;
+}
+
+.exif-filmstrip.list-scroll::-webkit-scrollbar {
+  height: 9px;
+}
+
+.exif-filmstrip.list-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.exif-filmstrip.list-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(244, 198, 92, 0.55);
+}
+
+.exif-filmstrip.list-scroll.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.exif-filmstrip.list-scroll.is-dragging .exif-list-item {
+  pointer-events: none;
+}
+
+.filmstrip-nav {
+  position: absolute;
+  z-index: 35;
+  top: 50%;
+  width: 36px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  transform: translateY(-52%);
+  border: 1px solid rgba(244, 198, 92, 0.38);
+  border-radius: 8px;
+  background: rgba(13, 16, 16, 0.86);
+  color: #f4c65c;
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.filmstrip-nav:hover {
+  border-color: rgba(244, 198, 92, 0.74);
+  background: rgba(35, 30, 18, 0.95);
+}
+
+.filmstrip-nav:disabled {
+  opacity: 0.34;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.38);
+  background: rgba(13, 16, 16, 0.62);
+  box-shadow: none;
+}
+
+.filmstrip-nav-left {
+  left: 18px;
+}
+
+.filmstrip-nav-right {
+  right: 18px;
+}
+
+.filmstrip-drag-rail {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 7px;
+  width: 88px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(5, 7, 7, 0.72);
+  color: rgba(255, 255, 255, 0.36);
+  pointer-events: none;
 }
 
 .exif-filmstrip .exif-list-item {
@@ -1028,6 +1134,7 @@ button:disabled {
   border-radius: 8px;
   padding: 8px;
   background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
 }
 
 .exif-filmstrip .exif-list-item img {
@@ -2709,7 +2816,7 @@ h1, h2, h3,
 .inspector-section h2,
 .secure-preview-title h1,
 .brand-block strong {
-  font-weight: 650 !important;
+  font-weight: 600 !important;
   letter-spacing: 0 !important;
   line-height: 1.15 !important;
 }
