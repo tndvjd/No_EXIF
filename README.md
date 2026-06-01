@@ -4,7 +4,7 @@ No EXIF Pro is a local-first desktop workbench for AI image creators who need to
 
 It is built for workflows around ComfyUI and similar image-generation tools: load a folder of generated images, inspect EXIF and PNG text metadata, remove privacy-sensitive fields, build export grids, review prompt/workflow data, create prompt-share cards, and optionally import Pixiv reference batches into the same private workspace.
 
-![No EXIF Pro EXIF mode](design-mockups/round-final-candidates/01-exif-remove-final-candidate.png)
+![No EXIF Pro actual E2E screenshot](assets/no-exif-pro-screenshot.png)
 
 ## Why This Exists
 
@@ -22,12 +22,6 @@ The guiding principle is simple: the app should feel like a private command work
 - Command palette for fast mode switching and core actions.
 - Electron security hardening with renderer sandboxing, trusted origin checks, path access guards, and clean PNG validation.
 - JavaScript, Python, Electron security, and Playwright-based QA coverage.
-
-## Screenshots
-
-| EXIF cleanup | Grid Studio | Metadata review |
-| --- | --- | --- |
-| ![EXIF cleanup](design-mockups/round-final-candidates/01-exif-remove-final-candidate.png) | ![Grid Studio](design-mockups/round-final-candidates/02-grid-studio-final-candidate.png) | ![Metadata review](design-mockups/round-final-candidates/03-metadata-final-candidate.png) |
 
 ## Tech Stack
 
@@ -88,7 +82,7 @@ No EXIF Pro is designed around local processing. The app does not require a host
 
 Pixiv import requires a user-provided refresh token for Pixiv API access. The token is entered by the user for the current operation and must never be committed to the repository, pasted into issues, or included in screenshots.
 
-The repository intentionally ignores local outputs, downloads, virtual environments, environment files, auth files, and token files. See [SECURITY.md](SECURITY.md) for reporting guidance.
+The repository intentionally ignores local outputs, downloads, virtual environments, environment files, auth files, and token files.
 
 ## Project Status
 
