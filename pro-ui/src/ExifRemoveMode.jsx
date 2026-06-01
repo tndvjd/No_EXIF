@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { ImagePlus, Folder, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Folder, GripHorizontal, ImagePlus, ShieldCheck } from 'lucide-react';
 import { metadataChip, formatDimensions, formatBytes } from './appUtils.js';
+import {
+  filmstripWheelDelta,
+  nextImageIndex,
+  PREVIEW_WHEEL_COOLDOWN_MS,
+  previewWheelDirection,
+} from './exifFilmstripModel.js';
 
-export function SecureExifPreview({ image, zoom = 1, onAdd }) {
+export function SecureExifPreview({ image, zoom = 1, onAdd, onPreviewWheel }) {
   if (!image) {
     return (
       <div className="large-empty">
@@ -26,7 +32,7 @@ export function SecureExifPreview({ image, zoom = 1, onAdd }) {
           </p>
         </div>
       </div>
-      <div className="single-preview-frame">
+      <div className="single-preview-frame" onWheel={onPreviewWheel}>
         <img
           className="single-preview-image"
           src={image.preview || image.thumb}
@@ -38,10 +44,13 @@ export function SecureExifPreview({ image, zoom = 1, onAdd }) {
   );
 }
 
-export function ExifListItem({ image, index, active, disabled, onSelect, onToggle }) {
+export const ExifListItem = React.forwardRef(function ExifListItem(
+  { image, index, active, disabled, onSelect, onToggle },
+  ref,
+) {
   const chip = metadataChip(image);
   return (
-    <article className={`exif-list-item${active ? ' is-active' : ''}`} onClick={onSelect}>
+    <article ref={ref} className={`exif-list-item${active ? ' is-active' : ''}`} onClick={onSelect}>
       <label className="check-cell" onClick={event => event.stopPropagation()}>
         <input
           type="checkbox"
@@ -61,7 +70,7 @@ export function ExifListItem({ image, index, active, disabled, onSelect, onToggl
       <em>{index + 1}</em>
     </article>
   );
-}
+});
 
 export function ExifRemoveMode({
   images,
@@ -82,28 +91,176 @@ export function ExifRemoveMode({
   onExport,
 }) {
   const [viewerZoom, setViewerZoom] = useState(1);
+  const [filmstripDragging, setFilmstripDragging] = useState(false);
+  const filmstripRef = useRef(null);
+  const filmstripItemRefs = useRef([]);
+  const lastPreviewWheelAtRef = useRef(0);
+  const dragStateRef = useRef({
+    active: false,
+    startX: 0,
+    scrollLeft: 0,
+    moved: false,
+    suppressClick: false,
+  });
   const selectedChip = selectedImage ? metadataChip(selectedImage) : null;
+  const canMovePrevious = selectedImageIndex > 0;
+  const canMoveNext = selectedImageIndex < images.length - 1;
 
   useEffect(() => {
     setViewerZoom(1);
   }, [selectedImage?.path]);
 
-  function scrollFilmstripWithWheel(event) {
-    const element = event.currentTarget;
-    if (element.scrollWidth <= element.clientWidth) return;
-    const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY);
-    if (!horizontal) {
-      event.preventDefault();
-      element.scrollLeft += event.deltaY;
+  useEffect(() => {
+    filmstripItemRefs.current.length = images.length;
+  }, [images.length]);
+
+  useEffect(() => {
+    if (!images.length) return;
+    filmstripItemRefs.current[selectedImageIndex]?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    });
+  }, [images.length, selectedImageIndex]);
+
+  useEffect(() => {
+    function moveWithKeyboard(event) {
+      if (!images.length) return;
+      if (busy) return;
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        selectRelativeImage(-1);
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        selectRelativeImage(1);
+      }
     }
+
+    window.addEventListener('keydown', moveWithKeyboard);
+    return () => window.removeEventListener('keydown', moveWithKeyboard);
+  }, [busy, images.length, selectedImageIndex]);
+
+  function scrollFilmstripWithWheel(event) {
+    const element = filmstripRef.current;
+    if (!element) return;
+    if (element.scrollWidth <= element.clientWidth) return;
+    const delta = filmstripWheelDelta(event);
+    if (!delta) return;
+    event.preventDefault();
+    element.scrollLeft += delta;
+  }
+
+  function selectRelativeImage(direction) {
+    const nextIndex = nextImageIndex(selectedImageIndex, images.length, direction);
+    if (nextIndex === selectedImageIndex) return;
+    onSelectImage(nextIndex);
+  }
+
+  function navigatePreviewWithWheel(event) {
+    if (busy || images.length <= 1) return;
+
+    const direction = previewWheelDirection(event);
+    if (!direction) return;
+
+    event.preventDefault();
+    const now = performance.now();
+    if (now - lastPreviewWheelAtRef.current < PREVIEW_WHEEL_COOLDOWN_MS) return;
+
+    lastPreviewWheelAtRef.current = now;
+    selectRelativeImage(direction);
+  }
+
+  function startFilmstripDrag(event) {
+    if (event.button !== 0) return;
+    if (event.target.closest('button, input, label, select, a')) return;
+
+    const element = filmstripRef.current;
+    if (!element || element.scrollWidth <= element.clientWidth) return;
+
+    dragStateRef.current = {
+      active: true,
+      startX: event.clientX,
+      scrollLeft: element.scrollLeft,
+      moved: false,
+      suppressClick: false,
+    };
+    setFilmstripDragging(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function dragFilmstrip(event) {
+    const state = dragStateRef.current;
+    if (!state.active) return;
+
+    const element = filmstripRef.current;
+    if (!element) return;
+
+    const offsetX = event.clientX - state.startX;
+    if (Math.abs(offsetX) > 4) {
+      state.moved = true;
+    }
+
+    if (state.moved) {
+      event.preventDefault();
+      element.scrollLeft = state.scrollLeft - offsetX;
+    }
+  }
+
+  function stopFilmstripDrag(event) {
+    const state = dragStateRef.current;
+    if (!state.active) return;
+
+    state.active = false;
+    state.suppressClick = state.moved;
+    setFilmstripDragging(false);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  }
+
+  function cancelFilmstripClickAfterDrag(event) {
+    const state = dragStateRef.current;
+    if (!state.suppressClick) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    state.suppressClick = false;
   }
 
   return (
     <main className="exif-review-mode exif-mode exif-viewer-mode">
       <section className="preview-panel exif-review-stage exif-viewer-stage">
-        <SecureExifPreview image={selectedImage} zoom={viewerZoom} onAdd={onAdd} />
+        <SecureExifPreview
+          image={selectedImage}
+          zoom={viewerZoom}
+          onAdd={onAdd}
+          onPreviewWheel={navigatePreviewWithWheel}
+        />
         <div className="exif-viewer-toolbar">
-          <span>{images.length ? `${selectedImageIndex + 1} / ${images.length}` : '이미지 없음'}</span>
+          <div className="exif-preview-stepper" aria-label="큰 미리보기 이미지 이동">
+            <button
+              type="button"
+              onClick={() => selectRelativeImage(-1)}
+              disabled={!canMovePrevious || busy}
+              title="이전 이미지 크게 보기"
+              aria-label="이전 이미지 크게 보기"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span>{images.length ? `${selectedImageIndex + 1} / ${images.length}` : '이미지 없음'}</span>
+            <button
+              type="button"
+              onClick={() => selectRelativeImage(1)}
+              disabled={!canMoveNext || busy}
+              title="다음 이미지 크게 보기"
+              aria-label="다음 이미지 크게 보기"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
           <div>
             <button
               type="button"
@@ -134,18 +291,54 @@ export function ExifRemoveMode({
           </button>
         </div>
         {images.length ? (
-          <div className="exif-filmstrip list-scroll" onWheel={scrollFilmstripWithWheel}>
-            {images.map((image, index) => (
-              <ExifListItem
-                key={image.path}
-                image={image}
-                index={index}
-                active={index === selectedImageIndex}
-                disabled={busy}
-                onSelect={() => onSelectImage(index)}
-                onToggle={checked => onToggleExif(index, checked)}
-              />
-            ))}
+          <div className="filmstrip-shell" onWheel={scrollFilmstripWithWheel}>
+            <button
+              type="button"
+              className="filmstrip-nav filmstrip-nav-left"
+              onClick={() => selectRelativeImage(-1)}
+              disabled={!canMovePrevious || busy}
+              title="이전 이미지 크게 보기"
+              aria-label="이전 이미지 크게 보기"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div
+              ref={filmstripRef}
+              className={`exif-filmstrip list-scroll${filmstripDragging ? ' is-dragging' : ''}`}
+              onPointerDown={startFilmstripDrag}
+              onPointerMove={dragFilmstrip}
+              onPointerUp={stopFilmstripDrag}
+              onPointerCancel={stopFilmstripDrag}
+              onClickCapture={cancelFilmstripClickAfterDrag}
+            >
+              {images.map((image, index) => (
+                <ExifListItem
+                  ref={node => {
+                    filmstripItemRefs.current[index] = node;
+                  }}
+                  key={image.path}
+                  image={image}
+                  index={index}
+                  active={index === selectedImageIndex}
+                  disabled={busy}
+                  onSelect={() => onSelectImage(index)}
+                  onToggle={checked => onToggleExif(index, checked)}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              className="filmstrip-nav filmstrip-nav-right"
+              onClick={() => selectRelativeImage(1)}
+              disabled={!canMoveNext || busy}
+              title="다음 이미지 크게 보기"
+              aria-label="다음 이미지 크게 보기"
+            >
+              <ChevronRight size={20} />
+            </button>
+            <div className="filmstrip-drag-rail" aria-hidden="true">
+              <GripHorizontal size={18} />
+            </div>
           </div>
         ) : null}
         <div className="panel-foot">선택 {exifTargetCount} / {images.length}</div>
