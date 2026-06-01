@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 const SOURCE_FILES = [
@@ -21,11 +22,25 @@ const BANNED_PATTERNS = [
   { name: 'negative letter spacing', pattern: /letter-spacing:\s*-/i },
 ];
 
+function readSource(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  if (!filePath.endsWith('styles.css')) return content;
+
+  const baseDir = path.dirname(filePath);
+  const imports = [...content.matchAll(/@import\s+"([^"]+)";/g)]
+    .map(match => path.join(baseDir, match[1]));
+  if (!imports.length) return content;
+  return [
+    content,
+    ...imports.map(importPath => fs.readFileSync(importPath, 'utf8')),
+  ].join('\n');
+}
+
 test('private workbench sources avoid generic AI-gradient SaaS patterns', () => {
   const findings = [];
 
   for (const filePath of SOURCE_FILES) {
-    const content = fs.readFileSync(filePath, 'utf8');
+    const content = readSource(filePath);
     for (const banned of BANNED_PATTERNS) {
       if (banned.pattern.test(content)) {
         findings.push(`${filePath}: ${banned.name}`);
@@ -37,13 +52,13 @@ test('private workbench sources avoid generic AI-gradient SaaS patterns', () => 
 });
 
 test('styles define a reduced motion fallback for product UI motion', () => {
-  const css = fs.readFileSync('pro-ui/src/styles.css', 'utf8');
+  const css = readSource('pro-ui/src/styles.css');
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
 });
 
 test('mode rail active state is in-flow and icon aligned', () => {
   const modeRail = fs.readFileSync('pro-ui/src/ModeRail.jsx', 'utf8');
-  const css = fs.readFileSync('pro-ui/src/styles.css', 'utf8');
+  const css = readSource('pro-ui/src/styles.css');
 
   assert.doesNotMatch(modeRail, /rail-active-pill/);
   assert.doesNotMatch(modeRail, /rail-modes-wrapper/);
@@ -98,7 +113,7 @@ test('approved GSAP micro-interactions are wired to focused UI surfaces', () => 
 });
 
 test('typographic hierarchy avoids over-heavy interface weights', () => {
-  const styles = fs.readFileSync('pro-ui/src/styles.css', 'utf8');
+  const styles = readSource('pro-ui/src/styles.css');
 
   assert.doesNotMatch(styles, /font-weight:\s*(750|800|900)\b/);
   assert.match(styles, /font-weight:\s*650\b/);

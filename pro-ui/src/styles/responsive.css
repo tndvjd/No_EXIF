@@ -1,0 +1,26 @@
+@media (max-width: 1380px) {
+  .pixiv-import-mode {
+    grid-template-columns: 300px minmax(400px, 1fr) 300px;
+  }
+
+  .pixiv-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .rail-icon-wrapper,
+  .rail-button-label,
+  .command-palette-panel {
+    transform: none !important;
+  }
+}
