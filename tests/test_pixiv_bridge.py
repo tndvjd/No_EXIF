@@ -1,6 +1,7 @@
 import tempfile
 import threading
 import unittest
+import base64
 from unittest.mock import Mock, patch
 
 from tools.pixiv_bridge import (
@@ -9,6 +10,7 @@ from tools.pixiv_bridge import (
     PixivService,
     build_download_plan,
     download_command,
+    extract_user_page,
     extract_user_id,
     safe_output_name,
 )
@@ -19,6 +21,12 @@ class PixivBridgeTests(unittest.TestCase):
         self.assertEqual(
             extract_user_id("https://www.pixiv.net/users/73211891/illustrations"),
             "73211891",
+        )
+
+    def test_extract_user_page_from_artworks_url(self):
+        self.assertEqual(
+            extract_user_page("https://www.pixiv.net/users/38297201/artworks?p=3"),
+            3,
         )
 
     def test_extract_user_id_from_plain_id(self):
@@ -42,6 +50,7 @@ class PixivBridgeTests(unittest.TestCase):
         illust.title = "sample"
         illust.width = 1344
         illust.height = 1728
+        illust.image_urls.square_medium = "https://i.pximg.net/c/128x128/test/144721221.jpg"
         illust.meta_single_page = None
         illust.meta_pages = [page]
 
@@ -49,6 +58,7 @@ class PixivBridgeTests(unittest.TestCase):
 
         self.assertEqual(plan[0]["fileName"], "001_144721221_p0.png")
         self.assertEqual(plan[0]["resolution"], "1344 x 1728")
+        self.assertEqual(plan[0]["previewUrl"], "https://i.pximg.net/c/128x128/test/144721221.jpg")
         self.assertEqual(plan[0]["selected"], True)
 
     def test_download_one_sends_pixiv_headers(self):
@@ -72,6 +82,24 @@ class PixivBridgeTests(unittest.TestCase):
         headers = get_mock.call_args.kwargs["headers"]
         self.assertEqual(headers["Referer"], "https://app-api.pixiv.net/")
         self.assertIn("PixivIOSApp", headers["User-Agent"])
+
+    def test_preview_data_url_uses_authenticated_pixiv_session(self):
+        class FakeResponse:
+            status_code = 200
+            headers = {"Content-Type": "image/jpeg"}
+            content = b"thumb-bytes"
+
+        service = PixivService()
+        service.api.requests_call = Mock(return_value=FakeResponse())
+
+        with patch("tools.pixiv_bridge.requests.get") as raw_get:
+            result = service._preview_data_url("https://i.pximg.net/c/250x250/thumb.jpg")
+
+        self.assertEqual(result, f"data:image/jpeg;base64,{base64.b64encode(b'thumb-bytes').decode('ascii')}")
+        service.api.requests_call.assert_called_once()
+        self.assertEqual(service.api.requests_call.call_args.args[:2], ("GET", "https://i.pximg.net/c/250x250/thumb.jpg"))
+        self.assertEqual(service.api.requests_call.call_args.kwargs["headers"]["Referer"], "https://app-api.pixiv.net/")
+        raw_get.assert_not_called()
 
     def test_download_one_can_name_file_by_artist_and_illust_id(self):
         class FakeResponse:

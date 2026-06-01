@@ -197,7 +197,7 @@ function decodePngPayload(payload) {
 }
 
 function e2ePixivItems() {
-  return [
+  const baseItems = [
     {
       illustId: 144721221,
       title: 'E2E Pixiv sample',
@@ -229,6 +229,18 @@ function e2ePixivItems() {
       selected: true,
     },
   ];
+  const requestedCount = Math.max(3, Math.min(Number(process.env.NOEXIF_E2E_PIXIV_ITEM_COUNT || baseItems.length), 120));
+  return Array.from({ length: requestedCount }, (_, index) => {
+    const base = baseItems[index % baseItems.length];
+    const illustId = Number(base.illustId) + index;
+    const extension = path.extname(base.fileName || '.jpg') || '.jpg';
+    return {
+      ...base,
+      illustId,
+      title: `${base.title} ${index + 1}`,
+      fileName: `${String(index + 1).padStart(3, '0')}_${illustId}${extension}`,
+    };
+  });
 }
 
 function createWindow() {

@@ -3,7 +3,8 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "No EXIF Pro Layout Studio desktop app",
+  "description": "Local-first desktop workbench for AI image metadata cleanup and ComfyUI workflow review",
+  "license": "MIT",
   "main": "electron/main.cjs",
   "scripts": {
     "build": "vite build",

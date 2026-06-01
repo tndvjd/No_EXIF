@@ -19,6 +19,13 @@ export function estimatePixivBytes(items) {
   return selectedPixivItems(items).reduce((total, item) => total + (Number(item.sizeBytes) || 0), 0);
 }
 
+export function summarizePixivEstimate(items) {
+  const selectedItems = selectedPixivItems(items);
+  const bytes = selectedItems.reduce((total, item) => total + (Number(item.sizeBytes) || 0), 0);
+  const known = selectedItems.length === 0 || selectedItems.every(item => Number(item.sizeBytes) > 0);
+  return { bytes, known };
+}
+
 export function filterPixivItems(items, options = {}) {
   const query = String(options.query || '').trim().toLowerCase();
   const filter = options.filter || '전체';

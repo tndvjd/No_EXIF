@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+import base64
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -56,6 +57,15 @@ def extract_user_id(value) -> str | None:
         return None
     match = re.search(r"/users/(\d+)", parsed.path)
     return match.group(1) if match else None
+
+
+def extract_user_page(value) -> int:
+    parsed = urlparse(str(value or "").strip())
+    query = parsed.query or ""
+    match = re.search(r"(?:^|&)p=(\d+)(?:&|$)", query)
+    if not match:
+        return 1
+    return max(1, int(match.group(1)))
 
 
 def safe_output_name(file_name) -> str:
@@ -113,6 +123,20 @@ def _first_attr(value, *names, default=""):
     return default
 
 
+def _preview_url_for_illust(illust) -> str:
+    image_urls = _first_attr(illust, "image_urls", default=None) or {}
+    preview = _first_attr(image_urls, "square_medium", "medium", "large", default="")
+    if preview:
+        return str(preview)
+    pages = _first_attr(illust, "meta_pages", default=[]) or []
+    if pages:
+        page_urls = _first_attr(pages[0], "image_urls", default={})
+        preview = _first_attr(page_urls, "medium", "large", "original", default="")
+        if preview:
+            return str(preview)
+    return ""
+
+
 def _image_urls_for_illust(illust) -> list[tuple[str, str]]:
     downloads = []
     single_page = _first_attr(illust, "meta_single_page", default=None)
@@ -142,6 +166,7 @@ def build_download_plan(illusts) -> list[dict]:
                     "illustId": _first_attr(illust, "id"),
                     "title": _first_attr(illust, "title", default=""),
                     "url": image_url,
+                    "previewUrl": _preview_url_for_illust(illust),
                     "fileName": f"{order:03d}_{source_name}",
                     "resolution": f"{width} x {height}" if width and height else "",
                     "pageCount": max(1, len(_first_attr(illust, "meta_pages", default=[]) or [])),
@@ -160,11 +185,46 @@ class PixivService:
     def login(self, refresh_token: str) -> None:
         self.api.auth(refresh_token=refresh_token)
 
-    def list_user_works(self, user_id: str, limit: int = 30) -> list[dict]:
+    def _preview_data_url(self, preview_url: str) -> str:
+        if not preview_url:
+            return ""
+        response = self.api.requests_call(
+            "GET",
+            preview_url,
+            headers={"Referer": IMAGE_REQUEST_HEADERS["Referer"]},
+        )
+        if response.status_code != 200:
+            return ""
+        content_type = response.headers.get("Content-Type", "").split(";")[0].strip().lower()
+        if not content_type.startswith("image/"):
+            return ""
+        encoded = base64.b64encode(response.content).decode("ascii")
+        return f"data:{content_type};base64,{encoded}"
+
+    def attach_previews(self, items: list[dict]) -> list[dict]:
+        if not items:
+            return items
+
+        def attach(item: dict) -> dict:
+            try:
+                preview = self._preview_data_url(str(item.get("previewUrl") or ""))
+                return {**item, "preview": preview} if preview else item
+            except Exception:
+                return item
+
+        workers = min(6, len(items))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            return list(executor.map(attach, items))
+
+    def list_user_works(self, user_id: str, limit: int = 30, start_page: int = 1) -> list[dict]:
         result = self.api.user_illusts(user_id)
         illusts = []
+        skip_remaining = max(0, (int(start_page or 1) - 1) * 48)
         while result is not None and len(illusts) < limit:
             for illust in getattr(result, "illusts", []) or []:
+                if skip_remaining > 0:
+                    skip_remaining -= 1
+                    continue
                 if len(illusts) >= limit:
                     break
                 if getattr(illust, "type", "") in {"illust", "manga"}:
@@ -174,7 +234,7 @@ class PixivService:
                 break
             time.sleep(0.35)
             result = self.api.user_illusts(**next_qs)
-        return build_download_plan(illusts)
+        return self.attach_previews(build_download_plan(illusts))
 
     def download_one(self, item: dict, output_dir: str, retries: int = 2, naming=None) -> DownloadResult:
         file_name = _output_name_for_item(item, naming)
@@ -249,8 +309,9 @@ def list_command(payload: dict) -> dict:
     if not user_id:
         raise ValueError("Valid Pixiv user URL or ID is required.")
     limit = max(1, min(int(payload.get("limit") or 30), 200))
+    start_page = extract_user_page(payload.get("target"))
     service = _service_from_payload(payload)
-    return {"ok": True, "userId": user_id, "items": service.list_user_works(user_id, limit)}
+    return {"ok": True, "userId": user_id, "items": service.list_user_works(user_id, limit, start_page=start_page)}
 
 
 def download_command(payload: dict) -> dict:

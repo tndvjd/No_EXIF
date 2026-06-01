@@ -9,6 +9,7 @@ import {
   normalizePixivTarget,
   selectedPixivItems,
 } from './pixivImportUtils.js';
+import * as pixivUtils from './pixivImportUtils.js';
 
 test('normalizePixivTarget trims user input', () => {
   assert.equal(normalizePixivTarget('  https://www.pixiv.net/users/73211891/illustrations  '), 'https://www.pixiv.net/users/73211891/illustrations');
@@ -40,6 +41,13 @@ test('estimatePixivBytes only counts selected items', () => {
   ]), 400);
 });
 
+test('summarizePixivEstimate marks unknown Pixiv sizes instead of reporting zero bytes', () => {
+  assert.deepEqual(pixivUtils.summarizePixivEstimate([
+    { fileName: '001_a.jpg', selected: true, sizeBytes: 0 },
+    { fileName: '002_b.jpg', selected: true },
+  ]), { bytes: 0, known: false });
+});
+
 test('filterPixivItems searches title and file name while preserving original index', () => {
   const items = [
     { title: 'Blue archive portrait', fileName: '001_a.jpg', pageCount: 1 },
@@ -64,7 +72,7 @@ test('filterPixivItems applies Pixiv candidate filters', () => {
   assert.deepEqual(
     filterPixivItems(items, {
       filter: '이미 받은 파일 제외',
-      downloadedPaths: ['C:/Users/cdg/Pictures/003_c.webp'],
+      downloadedPaths: ['C:/Users/example/Pictures/003_c.webp'],
     }).map(item => item.fileName),
     ['001_a.jpg', '002_b.png'],
   );

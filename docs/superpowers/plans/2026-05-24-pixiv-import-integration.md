@@ -20,9 +20,9 @@ Pixiv 통합은 No EXIF Pro의 기존 역할을 해치지 않고 "이미지 소�
 
 ## Safety Rules
 
-- `C:\Users\cdg\Documents\pixiv_crawl\token.txt`는 복사하지 않는다.
-- `C:\Users\cdg\Documents\pixiv_crawl\.venv`는 복사하지 않는다.
-- `C:\Users\cdg\Documents\pixiv_crawl\downloads`는 앱 코드에 섞지 않는다.
+- `%USERPROFILE%\Documents\pixiv_crawl\token.txt`는 복사하지 않는다.
+- `%USERPROFILE%\Documents\pixiv_crawl\.venv`는 복사하지 않는다.
+- `%USERPROFILE%\Documents\pixiv_crawl\downloads`는 앱 코드에 섞지 않는다.
 - Refresh Token은 UI 입력 또는 `%APPDATA%\pixiv_crawl\refresh_token.txt` 같은 사용자 설정 위치에서만 읽는다.
 - 다운로드 결과 이미지는 No EXIF Pro가 선택/생성한 폴더만 열 수 있게 `pathGuard`에 등록한다.
 
@@ -904,4 +904,3 @@ Manual checks:
 - Spec coverage: Pixiv 세션 재사용, 토큰 안전, 다운로드 헤더, UI 탭, 기존 No EXIF 흐름 연결, QA를 포함했다.
 - Placeholder scan: 구현을 미루는 TBD 항목 없이 각 작업에 파일과 명령을 지정했다.
 - Type consistency: Python 결과는 `{ ok, items }`, `{ ok, results }`이고 React/Electron에서 같은 이름을 사용한다.
-

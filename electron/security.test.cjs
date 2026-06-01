@@ -37,9 +37,9 @@ test('browser window enables the renderer sandbox', () => {
 
 test('path guard allows only remembered files or children of remembered directories', () => {
   const guard = createPathAccessGuard();
-  const root = path.resolve('C:/Users/cdg/Pictures/No_EXIF_Export_2026-05-18_1200');
+  const root = path.resolve('C:/Users/example/Pictures/No_EXIF_Export_2026-05-18_1200');
   const image = path.join(root, 'NOEXIF_photo.png');
-  const outside = path.resolve('C:/Users/cdg/Desktop/photo.png');
+  const outside = path.resolve('C:/Users/example/Desktop/photo.png');
 
   guard.rememberDirectory(root);
 
@@ -53,7 +53,7 @@ test('path guard allows only remembered files or children of remembered director
 
 test('path guard blocks executable open targets even when inside an allowed directory', () => {
   const guard = createPathAccessGuard();
-  const root = path.resolve('C:/Users/cdg/Pictures/No_EXIF_Export_2026-05-18_1200');
+  const root = path.resolve('C:/Users/example/Pictures/No_EXIF_Export_2026-05-18_1200');
   const script = path.join(root, 'run.bat');
 
   guard.rememberDirectory(root);
@@ -81,14 +81,14 @@ test('e2e shell show item reports success without revealing Explorer', () => {
 });
 
 test('metadata JSON save path must stay json', () => {
-  assert.equal(isAllowedJsonPath('C:/Users/cdg/Documents/out.metadata.json'), true);
-  assert.equal(isAllowedJsonPath('C:/Users/cdg/Documents/out.txt'), false);
+  assert.equal(isAllowedJsonPath('C:/Users/example/Documents/out.metadata.json'), true);
+  assert.equal(isAllowedJsonPath('C:/Users/example/Documents/out.txt'), false);
 });
 
 test('prompt card output path must stay png', () => {
-  assert.equal(isAllowedPngPath('C:/Users/cdg/Documents/PROMPT_CARD_photo.png'), true);
-  assert.equal(isAllowedPngPath('C:/Users/cdg/Documents/PROMPT_CARD_photo.jpg'), false);
-  assert.equal(isAllowedPngPath('C:/Users/cdg/Documents/PROMPT_CARD_photo.exe'), false);
+  assert.equal(isAllowedPngPath('C:/Users/example/Documents/PROMPT_CARD_photo.png'), true);
+  assert.equal(isAllowedPngPath('C:/Users/example/Documents/PROMPT_CARD_photo.jpg'), false);
+  assert.equal(isAllowedPngPath('C:/Users/example/Documents/PROMPT_CARD_photo.exe'), false);
 });
 
 test('validateCleanPngBuffer accepts PNG pixels and rejects hidden metadata chunks', () => {

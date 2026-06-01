@@ -23,12 +23,12 @@ test('buildExifExportFolderName uses the required timestamp format', () => {
 test('buildExifOutputDirectory nests export folder under selected parent', () => {
   const date = new Date(2026, 4, 18, 7, 3, 0);
   assert.equal(
-    buildExifOutputDirectory('C:\\Users\\cdg\\Pictures', date),
-    'C:\\Users\\cdg\\Pictures\\No_EXIF_Export_2026-05-18_0703',
+    buildExifOutputDirectory('C:\\Users\\example\\Pictures', date),
+    'C:\\Users\\example\\Pictures\\No_EXIF_Export_2026-05-18_0703',
   );
   assert.equal(
-    buildExifOutputDirectory('C:\\Users\\cdg\\Pictures', 'No_EXIF_Export_2026-05-18_0710'),
-    'C:\\Users\\cdg\\Pictures\\No_EXIF_Export_2026-05-18_0710',
+    buildExifOutputDirectory('C:\\Users\\example\\Pictures', 'No_EXIF_Export_2026-05-18_0710'),
+    'C:\\Users\\example\\Pictures\\No_EXIF_Export_2026-05-18_0710',
   );
   assert.equal(buildChildPath('C:/tmp', 'child'), 'C:/tmp/child');
 });
@@ -364,10 +364,10 @@ test('extractComfySummary reads workflow-only ComfyUI nodes with links and widge
 
 test('parseDroppedPathText reads plain and file URI paths', () => {
   assert.deepEqual(
-    parseDroppedPathText('file:///C:/Users/cdg/Downloads/a%20b.png\r\nfile:///D:/work/c.png'),
-    ['C:/Users/cdg/Downloads/a b.png', 'D:/work/c.png'],
+    parseDroppedPathText('file:///C:/Users/example/Downloads/a%20b.png\r\nfile:///D:/work/c.png'),
+    ['C:/Users/example/Downloads/a b.png', 'D:/work/c.png'],
   );
-  assert.deepEqual(parseDroppedPathText('C:\\Users\\cdg\\Pictures\\one.png\n'), ['C:\\Users\\cdg\\Pictures\\one.png']);
+  assert.deepEqual(parseDroppedPathText('C:\\Users\\example\\Pictures\\one.png\n'), ['C:\\Users\\example\\Pictures\\one.png']);
 });
 
 test('runToastAction reports native action failures', async () => {

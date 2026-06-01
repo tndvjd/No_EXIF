@@ -11,11 +11,27 @@ import {
 } from 'lucide-react';
 import { gsap } from 'gsap';
 import { formatBytes } from './appUtils.js';
-import { choosePixivDownloadItems, filterPixivItems } from './pixivImportUtils.js';
+import { choosePixivDownloadItems, filterPixivItems, summarizePixivEstimate } from './pixivImportUtils.js';
 
 const filterLabels = ['전체', '일러스트', '만화', '이미 받은 파일 제외'];
 
+function pixivPreviewBackground(preview) {
+  if (!preview) {
+    return 'linear-gradient(135deg, rgba(232, 184, 79, 0.22), rgba(255, 255, 255, 0.04))';
+  }
+  if (/^(data:image\/|https?:\/\/)/.test(preview)) {
+    const escaped = String(preview).replace(/"/g, '\\"');
+    return `center / cover no-repeat url("${escaped}")`;
+  }
+  return preview;
+}
+
 function PixivThumb({ item, index, onToggle }) {
+  const title = item.title || `Pixiv 작품 ${item.illustId || ''}`.trim();
+  const fileName = item.fileName || '파일명 미확인';
+  const resolution = item.resolution || '해상도 확인 전';
+  const pageCount = Number(item.pageCount || 1);
+
   return (
     <button
       type="button"
@@ -28,15 +44,15 @@ function PixivThumb({ item, index, onToggle }) {
       <span
         className="pixiv-thumb"
         style={{
-          background: item.preview,
+          background: pixivPreviewBackground(item.preview || item.previewUrl),
         }}
       />
       <span className="pixiv-card-body">
-        <strong>{item.title}</strong>
-        <small>{item.fileName}</small>
+        <strong title={title}>{title}</strong>
+        <small title={fileName}>{fileName}</small>
         <span className="pixiv-card-meta">
-          <em>{item.resolution}</em>
-          <i>{item.pageCount}장</i>
+          <em>{resolution}</em>
+          <i>{pageCount}장</i>
         </span>
       </span>
     </button>
@@ -93,10 +109,8 @@ export function PixivImportMode({
   const pixivRef = useRef(null);
   const visibleItems = useMemo(() => filterPixivItems(state.items, state), [state]);
   const downloadItems = useMemo(() => choosePixivDownloadItems(state.items, state), [state]);
-  const estimatedBytes = useMemo(
-    () => downloadItems.reduce((total, item) => total + (Number(item.sizeBytes) || 0), 0),
-    [downloadItems],
-  );
+  const estimate = useMemo(() => summarizePixivEstimate(downloadItems), [downloadItems]);
+  const estimateLabel = estimate.known ? formatBytes(estimate.bytes) : '다운로드 후 확인';
   const hasItems = visibleItems.length > 0;
 
   useEffect(() => {
@@ -241,7 +255,7 @@ export function PixivImportMode({
         <div className="pixiv-queue-bar">
           <div>
             <strong>대상 {downloadItems.length}장</strong>
-            <span>예상 {formatBytes(estimatedBytes)} · 저장 위치 {state.outputDir ? '확인됨' : '미선택'}</span>
+            <span>예상 {estimateLabel} · 저장 위치 {state.outputDir ? '확인됨' : '미선택'}</span>
           </div>
           <div className="pixiv-queue-actions">
             <button type="button" onClick={onSelectAll}>전체 선택</button>

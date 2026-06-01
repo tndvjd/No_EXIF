@@ -3,6 +3,11 @@ node_modules/
 .venv/
 venv/
 env/
+.env
+.env.*
+!.env.example
+.npmrc
+.pypirc
 
 # Build and packaged app outputs
 dist/
@@ -20,8 +25,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Local image batches
+# Local image batches and personal working folders
 260213/
+No_EXIF_Pixiv/
 
 # Caches and test artifacts
 .cache/
@@ -38,3 +44,11 @@ test-results/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Credentials and local-only auth/config files
+auth.json
+media-config.json
+token.txt
+refresh_token.txt
+*refresh-token*
+secrets/

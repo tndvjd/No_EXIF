@@ -6,7 +6,8 @@ const assert = require('node:assert/strict');
 
 const ROOT = path.resolve(__dirname, '..');
 const { validateCleanPngBuffer } = require(path.join(ROOT, 'electron', 'security.cjs'));
-const QA_SOURCE_DIR = 'C:/Users/cdg/Downloads/260515';
+const DEFAULT_QA_SOURCE_DIR = path.join(ROOT, 'output', 'qa-source');
+const QA_SOURCE_DIR = process.env.NOEXIF_QA_SOURCE_DIR || DEFAULT_QA_SOURCE_DIR;
 const OUT_DIR = path.join(ROOT, 'output', 'playwright', `e2e-${Date.now()}`);
 const QA_OUTPUT_DIR = path.join(ROOT, 'output', 'qa');
 const FIXTURE_DIR = path.join(ROOT, 'output', 'qa-fixtures');
@@ -24,6 +25,11 @@ function pythonCommand() {
   const venvPython = path.join(ROOT, '.venv', 'Scripts', 'python.exe');
   if (fs.existsSync(venvPython)) return { command: venvPython, prefix: [] };
   return { command: 'py', prefix: ['-3'] };
+}
+
+function resetGeneratedDirectory(dir) {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
 }
 
 function createComfyFixture() {
@@ -107,8 +113,8 @@ img.save(path, quality=94, exif=exif)
 }
 
 function createPhotoFixture(index) {
-  fs.mkdirSync(FIXTURE_DIR, { recursive: true });
-  const fixturePath = path.join(FIXTURE_DIR, `fallback_photo_${index}.jpg`);
+  fs.mkdirSync(QA_SOURCE_DIR, { recursive: true });
+  const fixturePath = path.join(QA_SOURCE_DIR, `fallback_photo_${index}.jpg`);
   const python = pythonCommand();
   const code = `
 import sys
@@ -529,6 +535,12 @@ async function firstTwoCellCentersFromCanvas(page) {
 }
 
 async function run() {
+  resetGeneratedDirectory(FIXTURE_DIR);
+  resetGeneratedDirectory(CAMERA_FIXTURE_DIR);
+  if (!process.env.NOEXIF_QA_SOURCE_DIR) {
+    resetGeneratedDirectory(DEFAULT_QA_SOURCE_DIR);
+  }
+
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.mkdirSync(QA_OUTPUT_DIR, { recursive: true });
 
@@ -555,6 +567,7 @@ async function run() {
       NOEXIF_E2E_TEMPLATE_SAVE_PATH: uiTemplatePath,
       NOEXIF_E2E_TEMPLATE_LOAD_PATH: uiTemplatePath,
       NOEXIF_E2E_PROMPT_CARD_OUTPUT_PATH: uiPromptCardPath,
+      NOEXIF_E2E_PIXIV_ITEM_COUNT: '36',
     },
   });
   const page = await app.firstWindow();
@@ -592,7 +605,18 @@ async function run() {
     await page.locator('.pixiv-field input[type="password"]').fill('e2e-refresh-token');
     await page.locator('.pixiv-primary').click();
     await page.waitForSelector('.pixiv-card', { timeout: 10000 });
-    assert.equal(await page.locator('.pixiv-card').count(), 3);
+    assert.equal(await page.locator('.pixiv-card').count(), 36);
+    const pixivCardLayout = await page.locator('.pixiv-card').first().evaluate(card => {
+      const thumb = card.querySelector('.pixiv-thumb');
+      const cardRect = card.getBoundingClientRect();
+      const thumbRect = thumb?.getBoundingClientRect();
+      return {
+        cardHeight: cardRect.height,
+        thumbHeight: thumbRect?.height || 0,
+      };
+    });
+    assert.ok(pixivCardLayout.cardHeight >= 220, `Pixiv card collapsed: ${JSON.stringify(pixivCardLayout)}`);
+    assert.ok(pixivCardLayout.thumbHeight >= 120, `Pixiv thumb collapsed: ${JSON.stringify(pixivCardLayout)}`);
     await page.screenshot({ path: path.join(OUT_DIR, '00-pixiv-import-ui.png'), fullPage: true });
     await page.locator('.rail-button[data-mode="exif"]').click();
     await page.waitForSelector('.exif-mode', { timeout: 10000 });

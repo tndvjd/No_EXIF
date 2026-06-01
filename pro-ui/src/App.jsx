@@ -979,7 +979,7 @@ export default function App() {
 
   async function choosePixivFolder() {
     if (!window.noExif?.choosePixivOutputDirectory) {
-      setPixivState(current => ({ ...current, outputDir: 'C:\\Users\\cdg\\Pictures\\No_EXIF_Pixiv' }));
+      setPixivState(current => ({ ...current, outputDir: 'No_EXIF_Pixiv' }));
       showToast({ type: 'info', title: '샘플 저장 폴더를 설정했습니다.' });
       return;
     }
