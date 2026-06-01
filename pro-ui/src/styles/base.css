@@ -1,0 +1,105 @@
+@font-face {
+  font-family: "NoExif Pretendard";
+  src:
+    local("Pretendard Variable"),
+    local("Pretendard"),
+    local("Pretendard GOV Variable"),
+    local("Pretendard GOV");
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: var(--font-sans);
+  background: #0b0d10;
+  color: #f3f0e8;
+  --font-sans: "NoExif Pretendard", "Pretendard Variable", "Pretendard", "Malgun Gothic", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", Consolas, monospace;
+  --bg: #0b0d10;
+  --graphite: #101317;
+  --panel: #15191e;
+  --panel-2: #1b2027;
+  --line: #2a3038;
+  --text-primary: #f3f0e8;
+  --muted: #b4afa5;
+  --muted-2: #777d76;
+  --gold: #e4b85e;
+  --gold-2: #f2cf7a;
+  --green: #78b66f;
+  --red: #d8665a;
+  --button-surface: #171b1a;
+  --button-surface-hover: #1d221f;
+  --button-line: rgba(255, 255, 255, 0.13);
+  --button-line-hover: rgba(228, 184, 94, 0.42);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 42%),
+    var(--bg);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button:not(:disabled) {
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(242, 207, 122, 0.72);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  height: 100vh;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  position: relative;
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: 56px 1fr 38px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mode-stage {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  will-change: transform, opacity;
+}
+
+.mode-stage > * {
+  min-width: 0;
+  min-height: 0;
+}

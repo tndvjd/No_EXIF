@@ -1,0 +1,172 @@
+.drop-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 76px 18px 54px 110px;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  border: 1px solid rgba(233, 179, 79, 0.68);
+  border-radius: 10px;
+  background: rgba(9, 11, 12, 0.82);
+  color: var(--gold-2);
+  opacity: 0;
+  transform: scale(0.99);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.drop-overlay strong {
+  font-size: 18px;
+}
+
+.drop-overlay span {
+  color: #d1c9bb;
+  font-size: 13px;
+}
+
+.app-shell.is-dragging .drop-overlay {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.toast {
+  position: fixed;
+  right: 18px;
+  bottom: 62px;
+  z-index: 30;
+  width: min(360px, calc(100vw - 140px));
+  min-height: 76px;
+  border: 1px solid rgba(128, 201, 111, 0.35);
+  border-radius: 10px;
+  background: rgba(24, 47, 24, 0.95);
+  color: #edf7e8;
+  display: grid;
+  grid-template-columns: 30px 1fr 24px;
+  gap: 10px;
+  align-items: start;
+  padding: 13px;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.36);
+}
+
+.app-shell.mode-exif .toast,
+.app-shell.mode-grid .toast {
+  right: clamp(318px, 24vw, 420px);
+  width: min(320px, calc(100vw - 140px));
+}
+
+.toast.warning {
+  border-color: rgba(233, 179, 79, 0.45);
+  background: rgba(67, 48, 18, 0.95);
+}
+
+.toast.error {
+  border-color: rgba(224, 109, 95, 0.5);
+  background: rgba(70, 28, 25, 0.95);
+}
+
+.toast.info {
+  border-color: rgba(111, 157, 205, 0.45);
+  background: rgba(25, 43, 62, 0.95);
+}
+
+.app-shell.mode-metadata .toast {
+  right: 18px;
+  width: min(300px, calc(100vw - 140px));
+  min-height: 70px;
+}
+
+.app-shell.mode-prompt-share .toast {
+  right: clamp(340px, 24vw, 430px);
+  width: min(330px, calc(100vw - 140px));
+}
+
+.toast strong,
+.toast span {
+  display: block;
+}
+
+.toast span {
+  margin-top: 5px;
+  color: #d7d1c7;
+  font-size: 12px;
+}
+
+.toast button:not(.toast-close) {
+  margin-top: 10px;
+  min-height: 32px;
+  border-color: rgba(233, 179, 79, 0.55);
+  color: var(--gold-2);
+}
+
+.toast-close {
+  width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(6px);
+}
+
+.confirm-modal {
+  width: min(420px, calc(100vw - 48px));
+  border: 1px solid rgba(233, 179, 79, 0.34);
+  border-radius: 10px;
+  background: #121514;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.48);
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 14px;
+  padding: 20px;
+}
+
+.confirm-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--gold-2);
+  background: rgba(233, 179, 79, 0.1);
+  border: 1px solid rgba(233, 179, 79, 0.3);
+}
+
+.confirm-copy h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.confirm-copy p {
+  margin: 8px 0 0;
+  color: #d6d0c5;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.confirm-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 6px;
+}
+
+.confirm-actions button {
+  min-width: 92px;
+}
+
+.confirm-confirm {
+  border-color: rgba(233, 179, 79, 0.72);
+  background: linear-gradient(180deg, #e8b756, #c98d2f);
+  color: #18140d;
+  font-weight: 700;
+}

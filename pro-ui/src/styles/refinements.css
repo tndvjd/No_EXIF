@@ -1,0 +1,225 @@
+/* --- Private Workbench Refinements --- */
+
+/* Custom Accordion Inspector Styles */
+.accordion-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.015);
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.accordion-section[open] {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.accordion-summary {
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #f1f5f9;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion-summary::after {
+  content: "→";
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.accordion-section[open] .accordion-summary::after {
+  transform: rotate(90deg);
+  color: var(--gold-2);
+}
+
+.accordion-content {
+  padding: 0 16px 16px;
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+/* Custom Range Input (Slider) Styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: 38px;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background: rgba(255, 255, 255, 0.08);
+  height: 4px;
+  border-radius: 999px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--gold);
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  margin-top: -5px;
+  box-shadow: 0 0 0 3px rgba(228, 184, 94, 0.14);
+  transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--gold-2);
+  transform: scale(1.08);
+  box-shadow: 0 0 0 4px rgba(228, 184, 94, 0.18);
+}
+
+/* Accent Active States */
+.rail-button.is-active {
+  color: var(--gold-2) !important;
+}
+
+.rail-button.is-active::before {
+  display: none !important;
+}
+
+
+.exif-list-item.is-active,
+.metadata-item.is-active,
+.prompt-library-card.is-active {
+  border-color: rgba(228, 184, 94, 0.5) !important;
+  background: rgba(228, 184, 94, 0.07) !important;
+  box-shadow: none;
+}
+
+/* Active aspect ratio / preset buttons */
+.template-thumb.is-active,
+button.is-active {
+  border-color: var(--gold) !important;
+  box-shadow: none !important;
+  background: rgba(228, 184, 94, 0.08) !important;
+}
+
+/* Typography & Numerical Fixed-width Control */
+.info-table strong,
+.info-card strong,
+.export-summary strong,
+.canvas-title span,
+.resize-tooltip,
+.slider-row em,
+.field-row em,
+.metadata-digest strong,
+.custom-size-grid input {
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0 !important;
+}
+
+/* Headings Letter-spacing Adjustment */
+h1, h2, h3,
+.panel-header h2,
+.inspector-section h2,
+.secure-preview-title h1,
+.brand-block strong {
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.15 !important;
+}
+
+/* Editorial Labels & Badges */
+.rail-foot,
+.status-badge,
+.chip,
+.panel-header p,
+.helper-text {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: var(--muted) !important;
+  line-height: 1.4 !important;
+}
+
+/* Prompt Box Typography */
+.prompt-box p {
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  letter-spacing: 0 !important;
+  color: #e3ded6 !important;
+}
+
+/* ModeRail precision states */
+.rail-active-line {
+  position: absolute;
+  left: -1px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.rail-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rail-button:hover {
+  color: #efe9dc;
+  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255,255,255,0.024);
+}
+
+.rail-button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.rail-button:hover .rail-icon-wrapper {
+  transform: translateY(-1px);
+  color: #efe9dc;
+}
+
+.rail-button:active .rail-icon-wrapper {
+  transform: translateY(1px);
+}
+
+.rail-button.is-active {
+  color: var(--gold-2) !important;
+  border-color: rgba(228, 184, 94, 0.22) !important;
+  background: rgba(228, 184, 94, 0.065) !important;
+  box-shadow: none !important;
+}
+
+.rail-button.is-active:hover:not(:disabled) {
+  border-color: rgba(228, 184, 94, 0.28) !important;
+}
+
+.rail-button.is-active:hover .rail-icon-wrapper {
+  color: var(--gold-2);
+}
+
+.rail-button.is-active .rail-active-line {
+  background: var(--gold-2);
+}
+
+.rail-button.is-active .rail-icon-wrapper {
+  border-color: rgba(228, 184, 94, 0.42);
+  background: rgba(228, 184, 94, 0.1);
+}
